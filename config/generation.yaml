@@ -1,0 +1,156 @@
+# Which AI models write the AI half of the dataset, and how prompts vary.
+#
+# Turn generators on with `enabled: true`. Use as many different models
+# (and companies) as you can: a detector trained on one model's writing
+# mostly learns that model's habits and misses the others.
+#
+# Exactly one enabled generator should have `holdout: true`. Its text is used
+# ONLY in the `test_holdout` split, so you can measure how the detector does on
+# a model it never saw in training (the situation you'll face on real sites).
+#
+# API keys are read from environment variables, never from this file:
+#   ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY (or GOOGLE_API_KEY),
+#   plus whatever `api_key_env` names for openai_compatible services.
+#
+# Model names change often. Check each provider's current model list and
+# update the `model` fields before running.
+
+generators:
+  # --- Anthropic (Claude) ---
+  # Prices are USD per million tokens, used only to print a cost estimate.
+  - name: claude-opus-5-5
+    provider: anthropic
+    model: claude-opus-5-5
+    enabled: true
+    weight: 1.0
+    effort: low            # thinking depth; low is plenty for one-line posts
+    fallbacks: default     # if a request is declined, the API retries it on another Claude model
+    price_in_per_mtok: 4.0
+    price_out_per_mtok: 20.0
+  - name: claude-sonnet-5-5
+    provider: anthropic
+    model: claude-sonnet-5-5
+    enabled: true
+    weight: 1.0
+    effort: low
+    fallbacks: default
+    price_in_per_mtok: 2.0
+    price_out_per_mtok: 10.0
+  - name: claude-haiku-5-5
+    provider: anthropic
+    model: claude-haiku-5-5
+    enabled: true
+    holdout: true          # test-only: never used for training
+    effort: low
+    price_in_per_mtok: 0.10
+    price_out_per_mtok: 0.50
+
+  # --- OpenAI ---
+  - name: openai-main
+    provider: openai
+    model: CHANGE-ME       # a current OpenAI chat model name
+    enabled: false
+    weight: 1.0
+    temperature: 1.0       # remove this line for models that reject temperature
+
+  # --- Google Gemini ---
+  - name: gemini-main
+    provider: google
+    model: CHANGE-ME       # a current Gemini model name, e.g. a "flash" model
+    enabled: false
+    weight: 1.0
+    temperature: 1.0
+
+  # --- Open models running locally with Ollama (free; https://ollama.com) ---
+  # Start Ollama, `ollama pull <model>`, then enable these.
+  - name: llama-local
+    provider: openai_compatible
+    base_url: http://localhost:11434/v1
+    model: llama3.1:8b
+    enabled: false
+    weight: 1.0
+    temperature: 0.9
+  - name: qwen-local
+    provider: openai_compatible
+    base_url: http://localhost:11434/v1
+    model: qwen2.5:7b
+    enabled: false
+    weight: 1.0
+    temperature: 0.9
+  - name: mistral-local
+    provider: openai_compatible
+    base_url: http://localhost:11434/v1
+    model: mistral:7b
+    enabled: false
+    weight: 1.0
+    temperature: 0.9
+    # Better holdout than a Claude model (a different company's model).
+    # To use it, move `holdout: true` here from claude-haiku-5-5.
+
+  # --- Hosted open-model services (OpenRouter, Groq, Together, ...) ---
+  # - name: deepseek-openrouter
+  #   provider: openai_compatible
+  #   base_url: https://openrouter.ai/api/v1
+  #   api_key_env: OPENROUTER_API_KEY
+  #   model: CHANGE-ME
+  #   enabled: false
+
+  # --- Offline fake generator, for testing the pipeline without any keys ---
+  - name: mock-a
+    provider: mock
+    model: mock
+    enabled: false
+  - name: mock-b
+    provider: mock
+    model: mock
+    enabled: false
+    holdout: true
+
+# Share of the test split's pairs that use the holdout generator.
+holdout_share_of_test: 0.5
+
+# How the instruction is phrased. Weights are relative.
+modes:
+  - {name: rewrite_topic, weight: 0.45}
+  - {name: reply, weight: 0.40}
+  - {name: from_gist, weight: 0.15}
+
+styles:
+  - {name: default, weight: 0.25}       # the model's own voice: plenty of real bots use it
+  - {name: lowercase_casual, weight: 0.15}
+  - {name: typos_slang, weight: 0.15}
+  - {name: standard, weight: 0.15}
+  - {name: enthusiastic, weight: 0.08}
+  - {name: sarcastic, weight: 0.08}
+  - {name: blunt, weight: 0.08}
+  - {name: rambling, weight: 0.06}
+
+# Who the post should sound like. An empty string means no persona.
+personas:
+  - ""
+  - ""
+  - ""
+  - a teenager
+  - a college student
+  - a tired parent
+  - a retiree
+  - someone who works retail
+  - a nurse coming off a night shift
+  - an office worker on a lunch break
+  - a music fan
+  - a sports fan
+  - a gamer
+  - someone who just moved to a new city
+  - someone who isn't a native English speaker
+  - a small business owner
+  - a grumpy commuter
+  - someone very online who jokes a lot
+  - a cheerful, friendly person
+  - a person who writes very briefly
+
+# When the generator config has no temperature, these ranges are sampled
+# per row for providers that accept temperature.
+temperature_range: [0.7, 1.1]
+
+# Retries when the output is empty, too long/short, or near-copies the seed.
+max_attempts: 3

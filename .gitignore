@@ -1,0 +1,14 @@
+# Secrets: API keys live in .env, which must never be committed
+.env
+.env.*
+!.env.example
+
+# Datasets and generated data (large, and some have licence limits)
+data/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
